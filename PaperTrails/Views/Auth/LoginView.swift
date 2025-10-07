@@ -9,22 +9,20 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var navigateToMain = false
     @State private var email = ""
     @State private var password = ""
-    
+    @State private var showPassword = false
+    @State private var showAlert = false
+    @State private var navigateToRegister = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                
                 Spacer()
                 
-                HStack{
-                    Text("PaperTrails").font(.system(size: 48, weight: .bold))
-                }
-                .padding()
+                Text("PaperTrails").font(.system(size: 48, weight: .bold))
                 
-                // email field
+                // Email field
                 TextField("Email", text: $email)
                     .padding()
                     .background(Color(.systemGray6))
@@ -34,49 +32,73 @@ struct LoginView: View {
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
                 
-                // password field
-                SecureField("Password", text: $password)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(5)
-                    .overlay(RoundedRectangle(cornerRadius: 5)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 1))
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
+                // Password field with show/hide toggle
+                HStack {
+                    if showPassword {
+                        TextField("Password", text: $password)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    } else {
+                        SecureField("Password", text: $password)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+
+                    Button(action: { showPassword.toggle() }) {
+                        Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(5)
+                .overlay(RoundedRectangle(cornerRadius: 5)
+                    .stroke(Color.gray.opacity(0.5), lineWidth: 1))
+
                 
-                // forgot password field
+                // Forgot password
                 HStack {
                     Spacer()
-                    Button(action:
-                            {
+                    Button("Forgot password?") {
                         print("Forgot password tapped")
-                    })
-                    {
-                        Text("Forgot password?")
-                            .font(.footnote)
-                            .foregroundColor(.black)
                     }
+                    .font(.footnote)
+                    .foregroundColor(.black)
                 }
                 
                 Spacer()
                 
-                // login button
+                // Login button
                 Button(action: {
-                    navigateToMain = true
-                    print("Login tapped")
-                }){
-                    Text("Log In")
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.black)
-                        .cornerRadius(5)
+                    Task {
+                        await authViewModel.login(email: email, password: password)
+                        if let _ = authViewModel.errorMessage {
+                            showAlert = true
+                        }
+                        print(authViewModel.accessToken)
+                    }
+                }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color.black)
+                            .frame(height: 50)
+                        
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Log In")
+                                .foregroundColor(.white)
+                                .fontWeight(.semibold)
+                        }
+                    }
                 }
                 .padding(.top, 10)
+                .disabled(authViewModel.isLoading)
+
                 
-                Button(action: {
-                    // TODO: Handle Apple Sign-In
-                }) {
+                // Apple Sign-In
+                Button(action: {}) {
                     HStack {
                         Image(systemName: "applelogo")
                             .font(.title2)
@@ -88,7 +110,7 @@ struct LoginView: View {
                     .foregroundColor(.black)
                 }
                 .padding(.horizontal)
-
+                
                 Spacer()
                 
                 HStack {
@@ -104,19 +126,35 @@ struct LoginView: View {
                 }
                 .padding(.vertical, 10)
                 
-                NavigationLink(destination: MainView(), isActive: $navigateToMain) {
-                                   EmptyView()
-                               }
+                // Navigation to MainView after successful login
+                NavigationLink(destination: MainView(), isActive: $authViewModel.isAuthenticated) {
+                    EmptyView()
+                }
                 
-                HStack{
+                HStack {
                     Text("Don't have an account?").foregroundColor(.gray)
                     NavigationLink("Register", destination: RegisterView()).foregroundColor(.black)
                 }
             }
             .padding()
+            .onAppear(){
+                authViewModel.errorMessage = nil
+            }
+        }
+        .alert("We couldn't find your account", isPresented: $showAlert) {
+            Button("Create New Account") {
+                navigateToRegister = true
+            }
+            Button("Try Again", role: .cancel) { }
+        } message: {
+            Text("Check your email or password and try again.")
+        }
+        .navigationDestination(isPresented: $navigateToRegister) {
+            RegisterView()
         }
     }
 }
+
 
 
 #Preview {

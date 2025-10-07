@@ -9,17 +9,19 @@ import SwiftUI
 
 struct RegisterView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var email = ""
     @State private var password = ""
+    @State private var showPassword = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                
                 Spacer()
+                
                 // Title
                 Text("Create Account")
                     .font(.system(size: 32, weight: .bold))
@@ -50,7 +52,7 @@ struct RegisterView: View {
                     .disableAutocorrection(true)
                 
                 // Email
-                TextField("Email", text: $email)
+                TextField("email@example.com", text: $email)
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(5)
@@ -62,7 +64,14 @@ struct RegisterView: View {
                     .disableAutocorrection(true)
                 
                 // Password
-                SecureField("Password", text: $password)
+                ZStack(alignment: .trailing) {
+                    Group {
+                        if showPassword {
+                            TextField("Password (min 8 chars)", text: $password)
+                        } else {
+                            SecureField("Password (min 8 chars)", text: $password)
+                        }
+                    }
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(5)
@@ -72,24 +81,58 @@ struct RegisterView: View {
                     )
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
+                    
+                    Button(action: { showPassword.toggle() }) {
+                        Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                            .foregroundColor(.gray)
+                            .padding(.trailing, 12)
+                    }
+                }
                 
                 Spacer()
                 
-                // Register Button
+                // Register button
                 Button(action: {
+                    if let validationError = validateAll() {
+                        alertMessage = validationError
+                        showAlert = true
+                        return
+                    }
                     
-                    print("Register tapped")
+                    Task {
+                        await authViewModel.register(
+                            firstName: firstName,
+                            lastName: lastName,
+                            email: email,
+                            password: password
+                        )
+                        
+                        // If backend returned error, show alert
+                        if let backendError = authViewModel.errorMessage {
+                            alertMessage = backendError
+                            showAlert = true
+                        }
+                    }
                 }) {
-                    Text("Register")
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.black)
-                        .cornerRadius(5)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(isFormValid ? Color.black : Color.gray)
+                            .frame(height: 50)
+                        
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Register")
+                                .foregroundColor(.white)
+                                .fontWeight(.semibold)
+                        }
+                    }
                 }
                 .padding(.top, 10)
+                .disabled(authViewModel.isLoading)
                 
-                // Sign in with Apple
+                // Sign in with Apple (optional)
                 Button(action: {
                     // Handle Apple Sign-In
                 }) {
@@ -107,16 +150,53 @@ struct RegisterView: View {
                 
                 Spacer()
                 
+                // Go to Login
                 HStack {
                     Text("Already have an account?").foregroundColor(.gray)
-                    NavigationLink("Log In", destination: LoginView()).foregroundColor(.black)
+                    NavigationLink("Log In", destination: LoginView())
+                        .foregroundColor(.black)
                 }
             }
+            .alert("Registration Failed", isPresented: $showAlert) {
+                Button("OK", role: .cancel) {
+                    authViewModel.errorMessage = nil
+                }
+            } message: {
+                Text(alertMessage)
+            }
             .padding()
+            .navigationDestination(isPresented: $authViewModel.registrationSuccess) {
+                LoginView()
+            }
+            .onAppear {
+                authViewModel.errorMessage = nil
+                authViewModel.registrationSuccess = false
+            }
         }
+    }
+    
+    private func validateAll() -> String? {
+        if !isFormValid {
+            return "All fields are required."
+        } else if !isValidEmail(email) {
+            return "Invalid email address."
+        } else if password.count < 8 {
+            return "Password must be at least 8 characters."
+        }
+        return nil
+    }
+    
+    private var isFormValid: Bool {
+        !firstName.isEmpty && !lastName.isEmpty && !email.isEmpty && !password.isEmpty
+    }
+    
+    private func isValidEmail(_ email: String) -> Bool {
+        let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+        return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: email)
     }
 }
 
 #Preview {
     RegisterView()
+        .environmentObject(AuthViewModel())
 }

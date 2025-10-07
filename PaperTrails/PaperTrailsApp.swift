@@ -9,11 +9,15 @@ import SwiftUI
 
 @main
 struct PaperTrailApp: App {
+    @StateObject private var authViewModel = AuthViewModel()
+
     var body: some Scene {
         WindowGroup {
             WelcomeView()
+                .environmentObject(authViewModel)
         }
     }
 }
+
 
 
