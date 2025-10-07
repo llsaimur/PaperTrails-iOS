@@ -9,15 +9,13 @@ class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published var accessToken: String? = nil
     
-    private let baseURL = "https://tiana-woodless-ghislaine.ngrok-free.dev/api/users"
-    
     func register(firstName: String, lastName: String, email: String, password: String) async {
         isLoading = true
         errorMessage = nil
 
         defer { isLoading = false } // Always reset loading even if error occurs
         
-        let url = URL(string: "\(baseURL)/register")!
+        let url = URL(string: APIEndpoints.register)!
         let requestBody = RegisterRequest(
             name: "\(firstName) \(lastName)",
             email: email,
@@ -55,7 +53,7 @@ class AuthViewModel: ObservableObject {
         
         defer { isLoading = false }
         
-        let url = URL(string: "\(baseURL)/login")!
+        let url = URL(string: APIEndpoints.login)!
         let requestBody = LoginRequest(email: email, password: password)
         
         do {
