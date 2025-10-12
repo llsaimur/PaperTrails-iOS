@@ -127,9 +127,15 @@ struct LoginView: View {
                 .padding(.vertical, 10)
                 
                 // Navigation to MainView after successful login
-                NavigationLink(destination: MainView(), isActive: $authViewModel.isAuthenticated) {
+                NavigationLink(
+                    destination: MainView(authViewModel: authViewModel)
+                        .environmentObject(authViewModel),
+                    isActive: $authViewModel.isAuthenticated
+                ) {
                     EmptyView()
                 }
+
+
                 
                 HStack {
                     Text("Don't have an account?").foregroundColor(.gray)

@@ -24,12 +24,4 @@ struct CategoryRowView: View {
     }
 }
 
-#Preview {
-    CategoryRowView(
-        category: Category(
-            name: "Bills",
-            documentCount: 6
-        )
-    )
-}
 

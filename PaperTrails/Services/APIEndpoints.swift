@@ -9,4 +9,6 @@
 struct APIEndpoints {
     static var register: String { Config.baseURL + "/users/register" }
     static var login: String { Config.baseURL + "/users/login" }
+    static var category: String { Config.baseURL + "/categories" }
+    
 }
